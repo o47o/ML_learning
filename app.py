@@ -10,6 +10,7 @@ import pickle
 from dotenv import load_dotenv
 import os
 from langchain.callbacks import get_openai_callback
+import json
 
 # side bar
 with st.sidebar:
@@ -23,10 +24,33 @@ with st.sidebar:
     st.write('Madness is like Gravity.. all you need is a push.')
 
 
+def chat_hist(file_path,chat_dict_list):
+    if os.path.exists(file_path):
+    # check size
+        file_size = os.path.getsize(file_path)
+        if file_size ==0:
+            print('history file is empty')
+            hist = chat_dict_list
+            with open(file_path, "w") as file:
+                json.dump(hist, file)
+        else:
+            print('history already present')
+            with open(file_path, "r") as file:
+                loaded_list_of_dicts = json.load(file)
+            new_chat = chat_dict_list
+            new_hist = loaded_list_of_dicts + new_chat
+            with open(file_path, "w") as file:
+                json.dump(new_hist, file) 
+
+def clear_file_content(file_path):
+    with open(file_path, "w") as file:
+        file.truncate(0)
 
 def main():
     st.header("Chat with PDF")
     load_dotenv()
+    file_path = "history.txt"
+    
     #upload PDF
     pdf = st.file_uploader("Upload your PDF",type='pdf')
     
@@ -67,7 +91,9 @@ def main():
         query = st.text_input("Type your question:")
         #st.write(query)
 
+        chat_history=[]
         if query:
+            print('in while')
             docs = vectorStore.similarity_search(query, k=3)
 
             llm = OpenAI(model_name = 'gpt-3.5-turbo',temperature=0)
@@ -78,11 +104,24 @@ def main():
             st.write(response)
             # query = st.text_input("Type your question:")
             # continue
-        
-        
+            chat_history.append({"You:":query,"LLM:":response})
+            chat_hist(file_path,chat_history)
+            # print(chat_history)
 
+            st.subheader("Chat History")
+            with open(file_path,'r') as file:
+                loaded_hist = json.load(file)
+            for item in loaded_hist:
+                st.write(f"You: {item['You:']}")
+                st.write(f"LLM: {item['LLM:']}")
+                       
     else:
         st.write("No PDF uploaded")
+    
 
 if __name__ =='__main__':
+    # print('creating ch')
+    # chat_history=[]
+    print('running main')
     main()
+    #print(chat_history)
